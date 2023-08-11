@@ -31,6 +31,7 @@ int main(int argc, char** argv)
   }
   fclose(file);
 
+  // 检查是否有解析错误和致命错误
   // Check for errors
   if (!data_container->parsingErrors().empty()) {
     printf("###### File Parsing Errors ######\n");
@@ -46,7 +47,7 @@ int main(int argc, char** argv)
   // Read out some data
   // TODO: create a simpler API for this
   const std::string message = "multirotor_motor_limits";
-  printf("%s timestamps: ", message.c_str());
+  printf("%s timestamps: \n", message.c_str());
   for (const auto& sub : data_container->subscriptions()) {
     if (sub.second.add_logged_message.messageName() == message) {
       const auto& fields = data_container->messageFormats().at(message).fields();
@@ -61,6 +62,8 @@ int main(int argc, char** argv)
             std::vector<uint8_t>(data.data().begin(), data.data().begin() + sizeof(uint64_t)));
         printf("%lu, ", std::get<uint64_t>(value.data()));
       }
+    } else {
+      printf("Error: %s not found\n", message.c_str());
     }
   }
   printf("\n");

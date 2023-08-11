@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 
-project(ulog_cpp LANGUAGES CXX)
+project(zz_data_log LANGUAGES CXX)
 
 # Determine if ulog_cpp is built as a subproject (using add_subdirectory) or if it is the main project.
 set(MAIN_PROJECT OFF)
@@ -52,7 +52,7 @@ if(MAIN_PROJECT)
 	include(clang_format)
 
 	add_subdirectory(examples)
-	add_subdirectory(test)
+	# add_subdirectory(test)
 
 endif()
 

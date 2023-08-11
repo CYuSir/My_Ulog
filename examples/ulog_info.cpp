@@ -25,14 +25,17 @@ int main(int argc, char** argv)
   }
   uint8_t buffer[4048];
   int bytes_read;
+  // 创建一个DataContainer对象，用于存储从ULog文件解析的数据。
   const auto data_container =
       std::make_shared<ulog_cpp::DataContainer>(ulog_cpp::DataContainer::StorageConfig::FullLog);
+  // 创建一个Reader对象，并从输入文件中读取数据块到缓冲区。
   ulog_cpp::Reader reader{data_container};
+  // 将每个数据块传递给Reader进行解析
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
     reader.readChunk(buffer, bytes_read);
   }
   fclose(file);
-
+  // 在读取完所有数据后，检查是否有解析错误，并打印错误信息（如果有）。
   // Check for errors
   if (!data_container->parsingErrors().empty()) {
     printf("###### File Parsing Errors ######\n");
@@ -40,6 +43,7 @@ int main(int argc, char** argv)
       printf("   %s\n", parsing_error.c_str());
     }
   }
+  // 检查是否有致命的解析错误，如果有则退出。
   if (data_container->hadFatalError()) {
     printf("Fatal parsing error, exiting\n");
     return -1;
@@ -47,6 +51,7 @@ int main(int argc, char** argv)
 
   // Print info
   // Dropouts
+  // 打印关于数据中丢包的信息。
   const auto& dropouts = data_container->dropouts();
   const int total_dropouts_ms = std::accumulate(
       dropouts.begin(), dropouts.end(), 0,
@@ -66,7 +71,7 @@ int main(int argc, char** argv)
       printf(" %s: <data>\n", name.c_str());
     }
   };
-
+  // 打印关于信息消息、多信息消息和数据中包含的消息的信息。
   // Info messages
   printf("Info Messages:\n");
   for (const auto& info_msg : data_container->messageInfo()) {
@@ -104,6 +109,7 @@ int main(int argc, char** argv)
     printf(" %s (%i)   -  %zu\n", message_name.c_str(), multi_instance, subscription.data.size());
   }
 
+// 打印关于消息格式的信息。
   printf("Formats:\n");
   for (const auto& msg_format : data_container->messageFormats()) {
     std::string format_fields;
@@ -113,6 +119,7 @@ int main(int argc, char** argv)
     printf(" %s: %s\n", msg_format.second.name().c_str(), format_fields.c_str());
   }
 
+// 打印关于日志消息的信息。
   // logging
   printf("Logging:\n");
   for (const auto& logging : data_container->logging()) {
@@ -124,6 +131,7 @@ int main(int argc, char** argv)
            logging.message().c_str());
   }
 
+// 打印关于默认参数和初始参数的信息。
   // Params (init, after, defaults)
   printf("Default Params:\n");
   for (const auto& default_param : data_container->defaultParameters()) {
