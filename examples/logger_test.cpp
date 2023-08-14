@@ -11,14 +11,6 @@ using namespace std;
 bool ZzDataLogOn = true;
 extern std::vector<DataVariant> all_structs;
 
-/**
- * returns the current time in microseconds
- */
-static uint64_t currentTimeUs() {
-    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
-        .count();
-}
-
 void PrintStruct(const MyData1& s) {
     printf("%s %d %s %ld\n", __func__, __LINE__, s.messageName().c_str(), s.fields().size());
     printf("timestamp: %ld\n", s.timestamp);
@@ -121,7 +113,7 @@ int main(int argc, char** argv) {
     // while (true) {
     //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // }
-    zz_data_log::GetInstance()->Fsync();
+    zz_data_log::GetInstance()->fsync();
     thread1.join();
     thread2.join();
     thread3.join();

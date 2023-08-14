@@ -1,55 +1,27 @@
-/****************************************************************************
- * Copyright (c) 2023 PX4 Development Team.
- * SPDX-License-Identifier: BSD-3-Clause
- ****************************************************************************/
 #pragma once
-
-#include <cstdio>
-#include <memory>
 #include <mutex>
-#include <regex>
-#include <unordered_map>
-#include <vector>
 
-#include "writer.hpp"
-
+#include "simple_writer.hpp"
 using namespace std;
 using namespace ulog_cpp;
 using namespace std::chrono_literals;
 
 extern bool ZzDataLogOn;
 
-static uint64_t currentTimeUs() {
-    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
-        .count();
-}
-
-namespace ulog_cpp {
-/**
- * ULog serialization class which checks for integrity and correct calling order.
- * It throws an UsageException() in case of a failed integrity check.
- */
 class zz_data_log {
+   public:
     // Declare CreateInstance as a friend function
     friend void CreateInstance(const std::string& filename);
     friend std::shared_ptr<zz_data_log> GetInstance();
-
-   public:
     /**
-     * Constructor with a callback for writing data.
-     * @param data_write_cb callback for serialized ULog data
-     * @param timestamp_us start timestamp [us]
-     */
-    explicit zz_data_log(DataWriteCB data_write_cb, uint64_t timestamp_us);
-    /**
-     * Constructor to write to a file.
+     * zz_data_log Constructor for writing data.
      * @param filename ULog file to write to (will be overwritten if it exists)
-     * @param timestamp_us  start timestamp [us]
      */
-    explicit zz_data_log(const std::string& filename, uint64_t timestamp_us);
-
     explicit zz_data_log(const std::string& filename);
 
+    /**
+     * zz_data_log Destructor
+     */
     ~zz_data_log();
 
     /**
@@ -67,7 +39,7 @@ class zz_data_log {
             throw UsageException("Filename, key and key_value must not be empty.");
             return false;
         }
-        writeInfo(key, key_value);
+        writer_->writeInfo(key, key_value);
         // Write all structs to message_format
         for (const auto& struct_variant : all_structs) {
             std::visit(
@@ -76,7 +48,7 @@ class zz_data_log {
                         printf("%s %d %s %ld\n", __func__, __LINE__, struct_ptr.messageName().c_str(),
                                struct_ptr.fields().size());
 
-                        writeMessageFormat(struct_ptr.messageName(), struct_ptr.fields());
+                        writer_->writeMessageFormat(struct_ptr.messageName(), struct_ptr.fields());
                     } else {
                         throw UsageException("All structs must have a message name and fields.");
                     }
@@ -84,13 +56,13 @@ class zz_data_log {
                 struct_variant);
         }
         // Check header complete
-        headerComplete();
+        writer_->headerComplete();
         // Write all structs to add_logged_message
         for (const auto& struct_variant : all_structs) {
             std::visit(
                 [&](const auto& struct_ptr) {
                     if (!struct_ptr.messageName().empty() && !struct_ptr.fields().empty()) {
-                        uint16_t id = writeAddLoggedMessage(struct_ptr.messageName());
+                        uint16_t id = writer_->writeAddLoggedMessage(struct_ptr.messageName());
                         id_map_[struct_ptr.messageName()] = id;
                     } else {
                         throw UsageException("All structs must have a message name and fields.");
@@ -114,37 +86,6 @@ class zz_data_log {
      */
     static std::shared_ptr<zz_data_log> GetInstance();
 
-    template <typename T>
-    void Write(const T data) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        uint16_t id = 0;
-        std::unordered_map<std::string, uint16_t>::iterator it = id_map_.find(data.messageName());
-        if (it != id_map_.end()) {
-            id = it->second;
-        } else {
-            throw UsageException("id not found");
-        }
-        printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
-        if (ZzDataLogOn) {
-            writeData(id, data);
-        }
-        printf("Logger Write called.\n");
-    }
-
-    /**
-     * Write a key-value info to the header. Typically used for versioning information.
-     * @tparam T one of std::string, int32_t, float
-     * @param key (unique) name, e.g. sys_name
-     * @param value
-     */
-    template <typename T>
-    void writeInfo(const std::string& key, const T& value) {
-        if (_header_complete) {
-            throw UsageException("Header already complete");
-        }
-        _writer->messageInfo(ulog_cpp::MessageInfo(key, value));
-    }
-
     /**
      * Write a parameter name-value pair to the header
      * @tparam T one of int32_t, float
@@ -152,11 +93,9 @@ class zz_data_log {
      * @param value
      */
     template <typename T>
-    void writeParameter(const std::string& key, const T& value) {
-        if (_header_complete) {
-            throw UsageException("Header already complete");
-        }
-        _writer->parameter(ulog_cpp::Parameter(key, value));
+    void WriteParameter(const std::string& key, const T& value) {
+        writer_->writeParameter(key, value);
+        printf("Logger WriteParameter called.\n");
     }
 
     /**
@@ -177,23 +116,12 @@ class zz_data_log {
      * @param name format name, must match the regex: "[a-zA-Z0-9_\\-/]+"
      * @param fields message fields, names must match the regex: "[a-z0-9_]+"
      */
-    void writeMessageFormat(const std::string& name, const std::vector<Field>& fields);
+    void WriteMessageFormat(const std::string& name, const std::vector<Field>& fields);
 
     /**
      * Call this to complete the header (after calling the above methods).
      */
-    void headerComplete();
-
-    /**
-     * Write a parameter change (@see writeParameter())
-     */
-    template <typename T>
-    void writeParameterChange(const std::string& key, const T& value) {
-        if (!_header_complete) {
-            throw UsageException("Header not yet complete");
-        }
-        _writer->parameter(ulog_cpp::Parameter(key, value));
-    }
+    void HeaderComplete();
 
     /**
      * Create a time-series instance based on a message format definition.
@@ -201,12 +129,7 @@ class zz_data_log {
      * @param multi_id Instance id, if there's multiple
      * @return message id, used for writeData() later on
      */
-    uint16_t writeAddLoggedMessage(const std::string& message_format_name, uint8_t multi_id = 0);
-
-    /**
-     * Write a text message
-     */
-    void writeTextMessage(Logging::Level level, const std::string& message, uint64_t timestamp);
+    uint16_t WriteAddLoggedMessage(const std::string& message_format_name, uint8_t multi_id = 0);
 
     /**
      * Write some data. The timestamp must be monotonically increasing for a given time-series (i.e.
@@ -214,41 +137,34 @@ class zz_data_log {
      * @param id ID from writeAddLoggedMessage()
      * @param data data according to the message format definition
      */
+    // template <typename T>
+    // void Write(const T& data);
     template <typename T>
-    void writeData(uint16_t id, const T& data) {
-        writeDataImpl(id, reinterpret_cast<const uint8_t*>(&data), sizeof(data));
+    void Write(const T data) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        // uint16_t id = id_map_[data.messageName()];
+        uint16_t id = 0;
+        std::map<std::string, uint16_t>::iterator it = id_map_.find(data.messageName());
+        if (it != id_map_.end()) {
+            id = it->second;
+        } else {
+            throw UsageException("id not found");
+        }
+        printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
+        if (ZzDataLogOn) {
+            writer_->writeData(id, data);
+        }
+        printf("Logger Write called.\n");
     }
-
     /**
      * Flush the buffer and call fsync() on the file (only if the file-based constructor is used).
      */
-    void fsync();
+    void Fsync();
 
    private:
-    static const std::string kFormatNameRegexStr;
-    static const std::regex kFormatNameRegex;
-    static const std::string kFieldNameRegexStr;
-    static const std::regex kFieldNameRegex;
-
-    struct Format {
-        unsigned message_size;
-    };
-    struct Subscription {
-        unsigned message_size;
-    };
-
-    void writeDataImpl(uint16_t id, const uint8_t* data, unsigned length);
-
-    std::unique_ptr<Writer> _writer;
-    std::FILE* _file{nullptr};
-
-    bool _header_complete{false};
-    std::unordered_map<std::string, Format> _formats;
-    std::vector<Subscription> _subscriptions;
-
     static std::shared_ptr<zz_data_log> instance_;
-    std::unordered_map<std::string, uint16_t> id_map_;
-    std::mutex mutex_;
-};
 
-}  // namespace ulog_cpp
+    std::unique_ptr<ulog_cpp::SimpleWriter> writer_;
+    std::mutex mutex_;
+    std::map<std::string, uint16_t> id_map_;
+};
