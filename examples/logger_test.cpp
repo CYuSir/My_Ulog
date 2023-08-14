@@ -1,14 +1,14 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include <ulog_cpp/logger.hpp>
+#include <ulog_cpp/zz_data_log.hpp>
 #include <vector>
 
 #include "escape_structs.hpp"
 
 using namespace std;
 
-bool LoggerOn = true;
+bool ZzDataLogOn = true;
 extern std::vector<DataVariant> all_structs;
 
 /**
@@ -49,7 +49,7 @@ void threadFunc1(int threadId) {
                 data.array[j] = i + j + 10;
             }
             PrintStruct(data);
-            logger::GetInstance()->Write(data);
+            zz_data_log::GetInstance()->Write(data);
             printf("%s %d\n", __func__, __LINE__);
 
             cpuload -= 1.424F;
@@ -74,7 +74,7 @@ void threadFunc2(int threadId) {
                 data.debug_array[j] = i + j + 3;
             }
 
-            logger::GetInstance()->Write(data);
+            zz_data_log::GetInstance()->Write(data);
             printf("%s %d\n", __func__, __LINE__);
 
             cpuload2 -= 1.848F;
@@ -99,7 +99,7 @@ void threadFunc3(int threadId) {
                 data.debug_array[j] = i + j + 6;
             }
 
-            logger::GetInstance()->Write(data);
+            zz_data_log::GetInstance()->Write(data);
             printf("%s %d\n", __func__, __LINE__);
 
             cpuload2 -= 2.848F;
@@ -111,8 +111,8 @@ void threadFunc3(int threadId) {
 }
 
 int main(int argc, char** argv) {
-    logger::CreateInstance("test.ulg");
-    logger::GetInstance()->Init<DataVariant>("test", "testUlogWriter", all_structs);
+    zz_data_log::CreateInstance("test.ulg");
+    zz_data_log::GetInstance()->Init<DataVariant>("test", "testUlogWriter", all_structs);
     std::thread thread1(threadFunc1, 1);
     // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     std::thread thread2(threadFunc2, 2);
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     // while (true) {
     //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // }
-    logger::GetInstance()->Fsync();
+    zz_data_log::GetInstance()->Fsync();
     thread1.join();
     thread2.join();
     thread3.join();

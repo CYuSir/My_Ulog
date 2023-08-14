@@ -6,23 +6,23 @@ using namespace std;
 using namespace ulog_cpp;
 using namespace std::chrono_literals;
 
-extern bool LoggerOn;
+extern bool ZzDataLogOn;
 
-class logger {
+class zz_data_log {
    public:
     // Declare CreateInstance as a friend function
     friend void CreateInstance(const std::string& filename);
-    friend std::shared_ptr<logger> GetInstance();
+    friend std::shared_ptr<zz_data_log> GetInstance();
     /**
-     * logger Constructor for writing data.
+     * zz_data_log Constructor for writing data.
      * @param filename ULog file to write to (will be overwritten if it exists)
      */
-    explicit logger(const std::string& filename);
+    explicit zz_data_log(const std::string& filename);
 
     /**
-     * logger Destructor
+     * zz_data_log Destructor
      */
-    ~logger();
+    ~zz_data_log();
 
     /**
      * Constructor to write to a file.
@@ -75,16 +75,16 @@ class logger {
     }
 
     /**
-     * Create a logger instance
+     * Create a zz_data_log instance
      * @param filename ULog file to write to (will be overwritten if it exists)
-     * @return logger instance
+     * @return zz_data_log instance
      */
     static void CreateInstance(const std::string& filename);
 
     /**
-     * Get the logger instance
+     * Get the zz_data_log instance
      */
-    static std::shared_ptr<logger> GetInstance();
+    static std::shared_ptr<zz_data_log> GetInstance();
 
     /**
      * Write a parameter name-value pair to the header
@@ -151,7 +151,7 @@ class logger {
             throw UsageException("id not found");
         }
         printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
-        if (LoggerOn) {
+        if (ZzDataLogOn) {
             writer_->writeData(id, data);
         }
         printf("Logger Write called.\n");
@@ -162,7 +162,7 @@ class logger {
     void Fsync();
 
    private:
-    static std::shared_ptr<logger> instance_;
+    static std::shared_ptr<zz_data_log> instance_;
 
     std::unique_ptr<ulog_cpp::SimpleWriter> writer_;
     std::mutex mutex_;

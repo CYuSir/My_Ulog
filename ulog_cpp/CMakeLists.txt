@@ -5,7 +5,7 @@ add_library(${PROJECT_NAME}
 	reader.cpp
 	writer.cpp
 	simple_writer.cpp
-	logger.cpp
+	zz_data_log.cpp
 )
 # add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 add_library(zz_data_logger ALIAS ${PROJECT_NAME})

@@ -21,7 +21,7 @@ with open(input_file_path, 'r') as input_file:
         struct_definitions.append((struct_name.strip(), struct_content.strip()))
 
 # Generate output file content with static methods
-output_file_content = f'#pragma once\n\n#include <cstdint>\n#include <string>\n#include <vector>\n#include <variant>\n#include <ulog_cpp/logger.hpp>\n\n'
+output_file_content = f'#pragma once\n\n#include <cstdint>\n#include <string>\n#include <vector>\n#include <variant>\n#include <ulog_cpp/zz_data_log.hpp>\n\n'
 
 # Loop through struct definitions
 for struct_name, struct_content in struct_definitions:

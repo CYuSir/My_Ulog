@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <variant>
-#include <ulog_cpp/logger.hpp>
+#include <ulog_cpp/zz_data_log.hpp>
 
 struct MyData1 {
     uint64_t timestamp;
