@@ -8,14 +8,9 @@ ZZ_MODULE(
 	VERSION
 		${ZZLOG_VERSION}
 	SOURCES
-		data_container.cpp
-		messages.cpp
-		reader.cpp
-		writer.cpp
-		simple_writer.cpp
-		zz_data_log.cpp
+		${LIB_ROOT_DIR}/src/
 	INCS
-		${LIB_ROOT_DIR}/ulog_cpp/
+		${LIB_ROOT_DIR}/include/ulog_cpp
 	INTERFACES
 		${LIB_ROOT_DIR}/include
 	LINK_LIBS
