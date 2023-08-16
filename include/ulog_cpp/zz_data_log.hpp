@@ -116,6 +116,7 @@ class zz_data_log {
 
     template <typename T>
     void Write(const T data) {
+        static int count = 0;
         std::lock_guard<std::mutex> lock(mutex_);
         uint16_t id = 0;
         std::unordered_map<std::string, uint16_t>::iterator it = id_map_.find(data.messageName());
@@ -124,11 +125,15 @@ class zz_data_log {
         } else {
             throw UsageException("id not found");
         }
-        printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
+        // printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
         if (ZzDataLogOn) {
             writeData(id, data);
+            if (count++ == 10) {
+                count = 0;
+                fsync();
+            }
         }
-        printf("Logger Write called.\n");
+        // printf("Logger Write called.\n");
     }
 
     /**
