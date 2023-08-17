@@ -9,8 +9,6 @@ using namespace std;
 
 #define IF_ELSE 1
 
-bool ZzDataLogOn = true;
-
 void PrintStruct(const MyData1& s) {
     printf("%s %d %s %ld\n", __func__, __LINE__, s.messageName().c_str(), s.fields().size());
     printf("timestamp: %ld\n", s.timestamp);

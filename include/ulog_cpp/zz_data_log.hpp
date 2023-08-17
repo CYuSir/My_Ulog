@@ -31,7 +31,7 @@ namespace ulog_cpp {
  */
 class zz_data_log {
     // Declare CreateInstance as a friend function
-    friend void CreateInstance(const std::string& filename);
+    friend void CreateInstance(const std::string& filename, bool ZzDataLogOn = true);
     friend std::shared_ptr<zz_data_log> GetInstance();
 
    public:
@@ -107,7 +107,7 @@ class zz_data_log {
      * @param filename ULog file to write to (will be overwritten if it exists)
      * @return zz_data_log instance
      */
-    static void CreateInstance(const std::string& filename);
+    static void CreateInstance(const std::string& filename, bool ZzDataLogOn = true);
 
     /**
      * Get the zz_data_log instance
@@ -126,7 +126,7 @@ class zz_data_log {
             throw UsageException("id not found");
         }
         // printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
-        if (ZzDataLogOn) {
+        if (ZzDataLogOn_) {
             writeData(id, data);
             if (count++ == 10) {
                 count = 0;
@@ -254,6 +254,7 @@ class zz_data_log {
     static std::shared_ptr<zz_data_log> instance_;
     std::unordered_map<std::string, uint16_t> id_map_;
     std::mutex mutex_;
+    bool ZzDataLogOn_;
 };
 
 }  // namespace ulog_cpp

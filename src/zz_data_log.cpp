@@ -16,13 +16,14 @@ const std::regex zz_data_log::kFormatNameRegex = std::regex(std::string(kFormatN
 const std::string zz_data_log::kFieldNameRegexStr = "[a-z0-9_]+";
 const std::regex zz_data_log::kFieldNameRegex = std::regex(std::string(kFieldNameRegexStr));
 
-void zz_data_log::CreateInstance(const std::string& filename) {
+void zz_data_log::CreateInstance(const std::string& filename, bool ZzDataLogOn) {
     if (filename.empty()) {
         throw UsageException("Filename must not be empty.");
     }
     if (!zz_data_log::instance_) {
         zz_data_log::instance_ = std::make_shared<zz_data_log>(filename);
     }
+    instance_->ZzDataLogOn_ = ZzDataLogOn;
     printf("Logger CreateInstance called.\n");
 }
 
