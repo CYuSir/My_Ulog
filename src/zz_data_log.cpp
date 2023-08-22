@@ -13,7 +13,7 @@ namespace ulog_cpp {
 
 const std::string zz_data_log::kFormatNameRegexStr = "[a-zA-Z0-9_\\-/]+";
 const std::regex zz_data_log::kFormatNameRegex = std::regex(std::string(kFormatNameRegexStr));
-const std::string zz_data_log::kFieldNameRegexStr = "[a-z0-9_]+";
+const std::string zz_data_log::kFieldNameRegexStr = "[a-zA-Z0-9_]+";
 const std::regex zz_data_log::kFieldNameRegex = std::regex(std::string(kFieldNameRegexStr));
 
 void zz_data_log::CreateInstance(const std::string& filename, bool ZzDataLogOn) {
@@ -34,7 +34,7 @@ std::shared_ptr<zz_data_log> zz_data_log::GetInstance() {
     if (!zz_data_log::instance_) {
         throw UsageException("Logger not initialized, please CreateInstance() first.");
     }
-    printf("Logger GetInstance called.\n");
+    // printf("Logger GetInstance called.\n");
     return zz_data_log::instance_;
 }
 
