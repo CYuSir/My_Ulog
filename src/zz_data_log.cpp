@@ -16,6 +16,19 @@ const std::regex zz_data_log::kFormatNameRegex = std::regex(std::string(kFormatN
 const std::string zz_data_log::kFieldNameRegexStr = "[a-zA-Z0-9_]+";
 const std::regex zz_data_log::kFieldNameRegex = std::regex(std::string(kFieldNameRegexStr));
 
+bool isValidFilename(const std::string& filename) {
+    // 查找文件名中的最后一个'.'
+    size_t lastDotPos = filename.rfind('.');
+
+    // 如果没找到'.'或者后缀不是.ulg,返回false
+    if (lastDotPos == std::string::npos || filename.substr(lastDotPos) != ".ulg") {
+        return false;
+    }
+
+    // 找到'.ulg'后缀,返回true
+    return true;
+}
+
 void zz_data_log::CreateInstance(const std::string& filename, bool ZzDataLogOn) {
     if (filename.empty()) {
         throw UsageException("Filename must not be empty.");
@@ -55,6 +68,11 @@ zz_data_log::zz_data_log(const std::string& filename, uint64_t timestamp_us) {
 }
 
 zz_data_log::zz_data_log(const std::string& filename) {
+    if (!isValidFilename(filename)) {
+        throw UsageException(
+            "Invalid filename, please input a valid filename, test.ulg or test.1.ulg or /tmp/test.ulg or "
+            "/tmp/test.1.ulg");
+    }
     init_params_.file_name = filename;
     _file = std::fopen(filename.c_str(), "wb");
     if (!_file) {
