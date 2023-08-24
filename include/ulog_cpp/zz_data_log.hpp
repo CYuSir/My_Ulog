@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 
 extern bool ZzDataLogOn;
 
-static uint64_t currentTimeUs() {
+inline uint64_t currentTimeUs() {
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
         .count();
 }
