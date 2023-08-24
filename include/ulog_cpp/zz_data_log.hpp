@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  ****************************************************************************/
 #pragma once
-
 #include <cstdio>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <regex>
@@ -23,6 +23,18 @@ static uint64_t currentTimeUs() {
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
         .count();
 }
+
+struct StructInfo {
+    std::string messageNname;
+    std::vector<ulog_cpp::Field> fields;
+};
+// 存储初始化参数的结构体
+struct InitParams {
+    std::string file_name;
+    std::string key;
+    std::string key_value;
+    std::vector<StructInfo> all_structs;
+};
 
 namespace ulog_cpp {
 /**
@@ -53,6 +65,18 @@ class zz_data_log {
     ~zz_data_log();
 
     /**
+     * filename of the ULog file
+     * @return  eg: "test.ulg" --> "test.1.ulg" or "test.2.ulg" --> "test.3.ulg"
+     * */
+    std::string generateNewFilename(const std::string& filename);
+
+    /**
+     * path of the ULog file
+     * @return eg: "/tmp/test.ulg" --> "/tmp/test.1.ulg" or "/tmp/test.2.ulg" --> "/tmp/test.3.ulg"
+     * */
+    std::string generateNewPathOrFilename(const std::string& pathOrFilename);
+
+    /**
      * Constructor to write to a file.
      * @param filename ULog file to write to (will be overwritten if it exists)
      * Write a key-value info to the header. Typically used for versioning information.
@@ -67,6 +91,9 @@ class zz_data_log {
             throw UsageException("Filename, key and key_value must not be empty.");
             return false;
         }
+
+        init_params_.key = key;
+        init_params_.key_value = key_value;
         writeInfo(key, key_value);
         // Write all structs to message_format
         for (const auto& struct_variant : all_structs) {
@@ -75,6 +102,11 @@ class zz_data_log {
                     if (!struct_ptr.messageName().empty() && !struct_ptr.fields().empty()) {
                         printf("%s %d %s %ld\n", __func__, __LINE__, struct_ptr.messageName().c_str(),
                                struct_ptr.fields().size());
+
+                        StructInfo struct_info;
+                        struct_info.messageNname = struct_ptr.messageName();
+                        struct_info.fields = struct_ptr.fields();
+                        init_params_.all_structs.push_back(struct_info);
 
                         writeMessageFormat(struct_ptr.messageName(), struct_ptr.fields());
                     } else {
@@ -101,7 +133,26 @@ class zz_data_log {
         printf("Logger Init called.\n");
         return true;
     }
-
+    bool Init(const InitParams& init_params) {
+        if (init_params.key.empty() || init_params.key_value.empty()) {
+            throw UsageException("Filename, key and key_value must not be empty.");
+            return false;
+        }
+        writeInfo(init_params.key, init_params.key_value);
+        // Write all structs to message_format
+        for (const auto& struct_variant : init_params.all_structs) {
+            writeMessageFormat(struct_variant.messageNname, struct_variant.fields);
+        }
+        // Check header complete
+        headerComplete();
+        // Write all structs to add_logged_message
+        for (const auto& struct_variant : init_params.all_structs) {
+            uint16_t id = writeAddLoggedMessage(struct_variant.messageNname);
+            id_map_[struct_variant.messageNname] = id;
+        }
+        printf("Logger Init called.\n");
+        return true;
+    }
     /**
      * Create a zz_data_log instance
      * @param filename ULog file to write to (will be overwritten if it exists)
@@ -255,6 +306,13 @@ class zz_data_log {
     std::unordered_map<std::string, uint16_t> id_map_;
     std::mutex mutex_;
     bool ZzDataLogOn_;
+
+    // 文件大小限制，以字节为单位
+    static constexpr uint64_t kMaxFileSize = 10 * 1024 * 1024;  // 10MB
+    uint64_t _currentFileSize = 0;
+
+    // 缓存初始化参数
+    InitParams init_params_;
 };
 
 }  // namespace ulog_cpp

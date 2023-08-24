@@ -55,6 +55,7 @@ zz_data_log::zz_data_log(const std::string& filename, uint64_t timestamp_us) {
 }
 
 zz_data_log::zz_data_log(const std::string& filename) {
+    init_params_.file_name = filename;
     _file = std::fopen(filename.c_str(), "wb");
     if (!_file) {
         throw ParsingException("Failed to open file");
@@ -70,6 +71,79 @@ zz_data_log::~zz_data_log() {
     if (_file) {
         std::fclose(_file);
     }
+}
+
+std::string zz_data_log::generateNewFilename(const std::string& filename) {
+    int version = 0;
+    std::cout << "generateNewFilename: " << filename << std::endl;
+    if (filename.empty()) {
+        throw UsageException("Filename must not be empty.");
+    }
+    // 寻找文件名中的最后一个点的位置
+    size_t lastDotPos = filename.rfind('.');
+    if (lastDotPos == std::string::npos) {
+        // 如果找不到点，直接返回原始路径
+        return filename;
+    }
+
+    // 找到版本号开始的点
+    size_t versionStartPos = filename.rfind('.', lastDotPos - 1);
+    if (versionStartPos == lastDotPos) {
+        version = 1;
+    } else {
+        // 提取版本号
+        std::string versionStr = filename.substr(versionStartPos + 1, lastDotPos - versionStartPos - 1);
+        std::cout << "versionStr: " << versionStr << std::endl;
+        version = std::stoi(versionStr);
+        ++version;
+    }
+
+    std::string newFilename = filename.substr(0, versionStartPos) + "." + std::to_string(version) + ".ulg";
+    return newFilename;
+}
+
+std::string zz_data_log::generateNewPathOrFilename(const std::string& pathOrFilename) {
+    int version = 0;
+    std::cout << "generateNewPathOrFilename: " << pathOrFilename << std::endl;
+    if (pathOrFilename.empty()) {
+        throw UsageException("Path or filename must not be empty.");
+    }
+    // 寻找最后一个斜杠的位置
+    size_t lastSlashPos = pathOrFilename.rfind('/');
+    if (lastSlashPos == std::string::npos) {
+        // 如果找不到斜杠，直接进行文件名处理
+        return generateNewFilename(pathOrFilename);
+    }
+
+    // 从路径中提取文件名部分
+    std::string filename = pathOrFilename.substr(lastSlashPos + 1);
+
+    // 寻找文件名中的最后一个点的位置
+    size_t lastDotPos = filename.rfind('.');
+    if (lastDotPos == std::string::npos) {
+        // 如果找不到点，直接返回原始路径
+        return pathOrFilename;
+    }
+
+    // 找到版本号开始的点
+    size_t versionStartPos = filename.rfind('.', lastDotPos - 1);
+    if (versionStartPos == lastDotPos) {
+        version = 1;
+    } else {
+        // 提取版本号
+        std::string versionStr = filename.substr(versionStartPos + 1, lastDotPos - versionStartPos - 1);
+        std::cout << "versionStr: " << versionStr << std::endl;
+        version = std::stoi(versionStr);
+        // 递增版本号
+        ++version;
+    }
+
+    // 构建新的文件名
+    std::string newFilename = filename.substr(0, versionStartPos) + "." + std::to_string(version) + ".ulg";
+
+    // 构建新的路径
+    std::string newPath = pathOrFilename.substr(0, lastSlashPos + 1) + newFilename;
+    return newPath;
 }
 
 void zz_data_log::writeMessageFormat(const std::string& name, const std::vector<Field>& fields) {
@@ -165,6 +239,40 @@ void zz_data_log::writeDataImpl(uint16_t id, const uint8_t* data, unsigned lengt
     std::vector<uint8_t> data_vec;
     data_vec.resize(expected_size);
     memcpy(data_vec.data(), data, expected_size);
+
+    _currentFileSize += length;
+
+    if (_currentFileSize >= kMaxFileSize) {
+        // 超过文件大小限制，关闭当前文件，生成新文件
+        _writer.reset();
+        std::fclose(_file);
+
+        _header_complete = false;
+        _subscriptions.clear();
+        _formats.clear();
+        id_map_.clear();
+
+        // 生成新文件名
+        std::string newFilename = generateNewPathOrFilename(init_params_.file_name);
+        init_params_.file_name = newFilename;
+        _file = std::fopen(newFilename.c_str(), "wb");
+        if (!_file) {
+            throw ParsingException("Failed to open file");
+        }
+
+        _currentFileSize = 0;
+        // 创建新的 _writer
+        _writer =
+            std::make_unique<Writer>([this](const uint8_t* data, int length) { std::fwrite(data, 1, length, _file); });
+        // 重新写入文件头
+        _writer->fileHeader(FileHeader(currentTimeUs()));
+        // 重新写入格式信息等
+
+        if (!Init(init_params_)) {
+            throw UsageException("Init failed." + init_params_.file_name + "need restart.");
+        }
+    }
+
     _writer->data(Data(id, std::move(data_vec)));
 }
 
