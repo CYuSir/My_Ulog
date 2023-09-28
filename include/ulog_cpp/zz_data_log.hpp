@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  ****************************************************************************/
 #pragma once
+#include <atomic>
 #include <cstdio>
 #include <iostream>
 #include <memory>
@@ -167,7 +168,7 @@ class zz_data_log {
 
     template <typename T>
     void Write(const T data) {
-        static int count = 0;
+        static atomic<int> count(0);
         std::lock_guard<std::mutex> lock(mutex_);
         uint16_t id = 0;
         std::unordered_map<std::string, uint16_t>::iterator it = id_map_.find(data.messageName());
@@ -179,8 +180,9 @@ class zz_data_log {
         // printf("%s %d %s %d\n", __func__, __LINE__, data.messageName().c_str(), id);
         if (ZzDataLogOn_) {
             writeData(id, data);
-            if (count++ == 10) {
-                count = 0;
+            count.fetch_add(1);
+            if (count.load() == 10) {
+                count.store(0);
                 fsync();
             }
         }
